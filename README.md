@@ -41,9 +41,17 @@ K_FOLDS = 5
 We explore:
 
 - Distribution of `sheikh_name` in train and test sets
+- <img width="631" height="203" alt="image" src="https://github.com/user-attachments/assets/6112dd7f-b1c2-42dc-b2a9-f32ff6fb3185" />
+
 - Histogram of `label_name` (Tajweed rule distribution)
+- <img width="534" height="425" alt="image" src="https://github.com/user-attachments/assets/2354d92a-027b-44a2-a878-eda2ac6dc0e6" />
+
 - Audio duration histogram
+- <img width="633" height="285" alt="image" src="https://github.com/user-attachments/assets/15ef27ef-cb45-486c-af0f-80305cd2e077" />
+
 - RMS energy and waveform mean energy
+- <img width="566" height="447" alt="image" src="https://github.com/user-attachments/assets/46bf8bca-5079-4c5c-9f99-56510c69c9f4" />
+
 - Detection of short (< 0.5s) or leaked audio samples
 
 ---
