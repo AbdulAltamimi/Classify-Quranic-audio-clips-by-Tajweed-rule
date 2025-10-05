@@ -1,130 +1,92 @@
-🎧 Tajweed Rule Classification — ConvNeXt + Log-Mel Spectrograms
+# 🕌 Tajweed Rule Classification from Quran Recitations  
+🎧 *Deep Learning with EfficientNet on Log-Mel Spectrograms*
 
-End-to-end audio classification pipeline for recognizing Tajweed rules from Quran recitation audio clips using log-Mel spectrograms and ConvNeXt. Developed as part of the KAUST vs KKU ML Tournament — Round 5.
+---
 
-⸻
+## 📌 Overview
 
-📘 Overview
+This repository presents a full **end-to-end pipeline** for classifying Tajweed rules from Quranic recitations using deep learning.  
+The model leverages **EfficientNet-B0** trained on **log-Mel spectrograms** derived from audio clips.
 
-This project builds a multi-class classifier to identify the Tajweed rule applied in a short audio clip of Quran recitation.
-	•	Input: .wav files sampled at 16kHz
-	•	Output: One of 4 Tajweed rule labels (e.g., “Ikhfa”, “Idgham”)
-	•	Model: ConvNeXt-Small pretrained on ImageNet, fine-tuned on log-Mel spectrograms
-	•	Cross-validation: 5-fold StratifiedKFold with macro-F1 metric
+The project includes:
 
-⸻
+- ✅ Audio preprocessing & exploratory data analysis
+- ✅ Custom PyTorch Dataset class
+- ✅ Waveform + spectrogram augmentations
+- ✅ Stratified K-Fold CV training with Focal Loss
+- ✅ Test-time augmentation (TTA) for inference
+- ✅ Ensemble predictions and final submission
 
-📊 Dataset
-	•	Train CSV: train.csv — contains id, label_name, and sheikh_name
-	•	Test CSV: test.csv — contains id, sheikh_name (no labels)
-	•	Audio: train/ and test/ folders with .wav files
+---
 
-Each audio file corresponds to a short recitation clip. Class balance and reciter diversity are visualized during EDA.
 
-⸻
+## 🎛️ Configuration & Hyperparameters
 
-🔍 EDA Highlights
-	•	Label distribution and reciter balance between train and test
-	•	Duration histogram: Most audios ~3–6 seconds
-	•	RMS and Energy plots show dynamic range of clips
-	•	Leaked samples removed by hashing waveforms
-	•	Very short audios (<0.5s) removed from train set
+Below we define key constants used throughout the pipeline:
 
-⸻
+```python
+# Audio parameters
+SAMPLE_RATE = 16_000       # Hz
+MAX_SEC     = 6.0          # seconds
+MAX_LEN     = int(SAMPLE_RATE * MAX_SEC)
 
-🎛️ Configuration
-	•	SAMPLE_RATE = 16000
-	•	MAX_SEC = 6.0
-	•	MAX_LEN = 96000 samples
-	•	BATCH = 64, EPOCHS = 10, LR = 3e-4
-	•	K_FOLDS = 5
-	•	DEVICE = 'cuda' if available
+# Training parameters
+BATCH   = 64
+EPOCHS  = 10
+LR      = 3e-4
+K_FOLDS = 5
+```
+📊 Exploratory Data Analysis (EDA)
 
-⸻
-
-🧪 Input Pipeline: Log-Mel Spectrograms
-
-Custom Dataset class handles:
-	•	Resampling to 16kHz
-	•	Padding or trimming to fixed duration
-	•	Computing MelSpectrogram → log-Mel (dB)
-	•	Normalization using global mean/std
-	•	Repeating to 3 channels for image models
-
-🎛️ Augmentations include Gaussian noise, time-stretching, random gain, SpecAugment (Time/Frequency masking)
+We explore:
+	•	Distribution of sheikh_name in train and test
+	•	Histogram of label_name (Tajweed rule distribution)
+	•	Audio duration histogram
+	•	RMS energy and waveform mean energy
+	•	Detection of short (< 0.5s) or leaked audio samples
 
 ⸻
 
-🏗️ Model: ConvNeXt-Small
+🧹 Data Cleaning
 
-from torchvision.models import convnext_small, ConvNeXt_Small_Weights
-model = convnext_small(weights=ConvNeXt_Small_Weights.IMAGENET1K_V1)
-model.classifier[2] = nn.Linear(in_features, n_classes)
-
-	•	Final classifier head is swapped to match n_classes=4
-	•	Pretrained backbone fine-tuned end-to-end
+We perform the following:
+	•	✅ Remove duplicated audio (using SHA-256 waveform hash)
+	•	✅ Remove very short audios in train set (< 0.5 sec)
+	•	ℹ️ Short audios in test set are logged but not removed
 
 ⸻
 
-🧠 Loss Function: Focal Loss
+🎶 Feature Extraction: Log-Mel Spectrograms
 
-To handle class imbalance, we use Focal Loss with label smoothing:
+Each .wav file is:
+	•	Resampled to 16kHz
+	•	Converted to mono
+	•	Padded or trimmed to 6 seconds
+	•	Transformed into a log-Mel spectrogram (3×96×T)
 
-FocalLoss(gamma=2.0, smoothing=0.1, weight=class_weights)
-
-Class weights are computed from the training labels.
-
-⸻
-
-🔁 Training Procedure
-	•	5-fold StratifiedKFold on label_name
-	•	Each fold trains for 10 epochs
-	•	Model checkpoint (.pt) saved per fold based on best val_F1
-	•	Metrics: Macro F1 Score (torchmetrics)
-
-Example results:
-
-Fold1 best val_F1 = 0.9430
-Fold2 best val_F1 = 0.9535
-Fold3 best val_F1 = 0.9440
-Fold4 best val_F1 = 0.9510
-Fold5 best val_F1 = 0.9717
-→ Mean CV F1 = 0.9527
-
+Normalization is done using GLOBAL_MEAN and GLOBAL_STD computed over the training set.
 
 ⸻
 
-🔎 Inference & Submission
-	•	Load all 5 fold checkpoints
-	•	Apply Test-Time Augmentation (TTA): 5 rounds of SpecAugment
-	•	Average softmax predictions across folds & TTA rounds
-	•	Decode label_id → label_name using LabelEncoder
-	•	Save submission.csv
+🧾 Dataset Class (TajweedSpecDataset)
 
-⸻
+Handles:
+	•	Log-Mel spectrogram transformation
+	•	Waveform augmentations:
+	•	Gaussian noise
+	•	Time stretching (SoX-based)
+	•	Volume gain
+	•	Spec augmentations:
+	•	Time masking
+	•	Frequency masking
 
-📊 Test Distribution Visualization
+🧼 Performance Summary 
+Metric
+Value
+CV F1 Score
+~0.88 🔥
+Test TTA
+Enabled
+Inference
+Ensemble of 5 folds + softmax averaging
 
-Final predicted class distribution on test set is plotted to inspect balance and model bias.
-
-⸻
-
-✅ Summary
-
-This solution achieved 95.2% macro-F1 average across 5 folds using:
-	•	Robust log-Mel spectrogram preprocessing
-	•	ConvNeXt-Small pretrained backbone
-	•	Focal loss with label smoothing and class weights
-	•	5-fold stratified CV + TTA during inference
-
-🏆 Strong baseline with room for improvements like:
-	•	Using larger models (e.g., ConvNeXt-Base, Swin)
-	•	Pseudo-labeling test data
-	•	Advanced audio augmentations (SpecMix, MixUp)
-
-⸻
-
-📁 Deliverables:
-	•	effb0_fold{1–5}.pt (checkpoints)
-	•	submission.csv
-	•	Optional: training logs & sample predictions
